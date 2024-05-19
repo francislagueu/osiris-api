@@ -1,0 +1,134 @@
+miscellaneous:
+  max-response-time-to-log-in-ms: ${MAX_RESPONSE_TIME_TO_LOG_IN_MS:1000}
+
+http:
+  clients:
+    default-timeout: ${HTTP_CLIENTS_DEFAULT_TIMEOUT:5000}
+    webhook-site:
+      base-url: ${HTTP_CLIENTS_MY_EXTERNAL_API_BASE_URL}
+
+rate-limit:
+  default:
+    name: ${DEFAULT_RATE_LIMIT_NAME:DEFAULT}
+    max-requests: ${DEFAULT_MAX_REQUESTS:50}
+    refill-in-seconds: ${DEFAULT_REFILL_IN_SECONDS:1}
+
+slack:
+  env: ${SLACK_ENV}
+  channels:
+    api-alert:
+      url: ${SLACK_API_ALERT_URL}
+      name: ${SLACK_API_ALERT_CHANNEL}
+
+rabbitmq:
+  host: ${RABBITMQ_HOST}
+  port: ${RABBITMQ_PORT}
+  username: ${RABBITMQ_USERNAME}
+  password: ${RABBITMQ_PASSWORD}
+  listeners:
+    event:
+      queue: ${RABBITMQ_LISTENERS_EVENT_QUEUE}
+      prefetch-count: ${RABBITMQ_LISTENERS_EVENT_PREFETCH_COUNT:10}
+  publishers:
+    webhook:
+      exchange: ${RABBITMQ_PUBLISHERS_WEBHOOK_EXCHANGE}
+      routingkey: ${RABBITMQ_PUBLISHERS_WEBHOOK_ROUTING_KEY}
+
+kubernetes:
+  service-name: ${KUBERNETES_SERVICE_NAME:api}
+
+management:
+  server:
+    port: 8081
+  info:
+    java:
+      enabled: true
+  endpoint:
+    health:
+      probes:
+        enabled: true
+        add-additional-paths: true
+    #      group:
+    #       readiness:
+    #         include: rabbit
+  
+  endpoints:
+    web:
+      exposure:
+        include: info, health, metrics, preStopHook # prometheus
+
+spring:
+  application:
+    name: api
+  main:
+    keep-alive: true # ensures JVM is kept alive, even if all threads are virtual threads https://docs.spring.io/spring-boot/docs/3.2.0-RC2/reference/htmlsingle/#features.spring-application.virtual-threads
+  reactor:
+    context-propagation: auto # automatically propagates trace and span in reactive pipelines.
+  threads:
+    virtual:
+      enabled: true
+  web:
+    resources:
+      add-mappings: false # disable static content.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${SECURITY_OAUTH_ISSUER_URI}
+          jwk-set-uri: ${SECURITY_OAUTH_JWK_SET_URI}
+  data:
+    web:
+      pageable:
+        max-page-size: 20 # default 2000
+  
+  flyway:
+    locations: classpath:/db/migration/postgresql
+  
+  datasource:
+    hikari.:
+      maximum-pool-size: ${DB_MAX_POOL_SIZE:20}
+      auto-commit: false # improve performance
+      data-source-properties:
+        ApplicationName: ${spring.application.name} # allows to see what applications are connected to the server and what resources they are using through views like pg_stat_activity
+        reWriteBatchedInserts: true
+        stringtype: unspecified
+    url: jdbc:postgresql://${DB_HOST}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  
+  jpa:
+    open-in-view: false # disables lazy loading in web views, important for performance.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        generate_statistics: false
+        jdbc:
+          # important: When using GenerationType.IDENTITY Hibernate disable batching, you need to use BatchSequenceGenerator
+          batch_size: ${JDBC_BATCH_SIZE:10}
+          time_zone: ${JDBC_TIMEZONE:America/Sao_Paulo}
+    
+    #  jackson:
+    #    property-naming-strategy: LOWER_CAMEL_CASE
+    #  visibility.field: any
+    #  visibility.getter: none
+    #  visibility.setter: none
+    #  visibility.is-getter: none
+    
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+  
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  shutdown: graceful
+
+---
+spring:
+  config:
+    activate:
+      on-profile: replication
+  flyway:
+    locations: classpath:/db/migration/replication,classpath:/db/migration/postgresql

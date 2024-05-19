@@ -1,0 +1,67 @@
+slack:
+  env: api-dev
+  channels:
+    api-alert:
+      url: http://your-slack-bot-url.com/example
+      name: api-alert
+
+http:
+  clients:
+    webhook-site:
+      base-url: https://webhook.site/f6ec3af8-08d7-427d-b839-3d88f84fa9c0
+
+rabbitmq:
+  host: localhost
+  port: 5672
+  username: user
+  password: password
+  listeners:
+    event:
+      queue: webhook
+  publishers:
+    webhook:
+      exchange: outbound
+      routingkey: to_outbound_webhook
+
+profiling:
+  pyroscope:
+    enabled: false
+    server: http://pyroscope-local.cloud-diplomats.com
+
+management:
+  endpoint:
+    health:
+      show-details: always
+  
+  # for testing purpose you can use https://github.com/CtrlSpice/otel-desktop-viewer
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/api
+    username: user
+    password: password
+  jpa:
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+  
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8000/realms/api
+          jwk-set-uri: http://localhost:8000/realms/api/protocol/openid-connect/certs
+  
+  devtools:
+    restart:
+      enabled: false
+
+logging:
+  pattern.correlation: "[${spring.application.name:},%X{trace_id:-},%X{span_id:-},%X{trace_flags:-}]"
+  level:
+    web: info
+    # org.springframework.cache: TRACE
+    # hibernate.SQL: DEBUG
+    # hibernate.engine.jdbc.batch.internal.BatchingBatch: DEBUG
+    # reactor.netty.http.client.HttpClient: DEBUG
